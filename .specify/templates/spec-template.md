@@ -84,16 +84,22 @@
 
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-001**: System MUST provide versioned API endpoints and document deprecation timelines.
+- **FR-002**: System MUST validate all requests pre-handler producing RFC 7807 problem+json.
+- **FR-003**: System MUST implement resilience policies (retry, circuit breaker, timeout) for external calls.
+- **FR-004**: System MUST publish events via outbox ensuring eventual consistency.
+- **FR-005**: System MUST expose structured logs and OpenTelemetry traces for ≥90% of endpoints.
+- **FR-006**: System MUST support feature flags for experimental functionality with rollback.
+- **FR-007**: System MUST ensure graceful shutdown (drain requests, consumers, outbox flush).
+- **FR-008**: System MUST provide contract tests validating OpenAPI spec compliance.
+- **FR-009**: System MUST offer deployment artifacts (Compose, Aspire manifests, Helm chart skeleton).
+- **FR-010**: System MUST redact sensitive data from logs.
 
-*Example of marking unclear requirements:*
+*Example of marking unclear requirements (limit 3):*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-011**: System MUST authenticate users via [NEEDS CLARIFICATION: choose auth flows if beyond JWT bearer]
+- **FR-012**: System MUST retain user data for [NEEDS CLARIFICATION: specify retention period]
+- **FR-013**: Feature flags MUST persist state in [NEEDS CLARIFICATION: storage choice]
 
 ### Key Entities *(include if feature involves data)*
 

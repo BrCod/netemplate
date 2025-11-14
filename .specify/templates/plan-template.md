@@ -31,7 +31,21 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Must satisfy BEFORE research start:
+1. Architecture layering sketched (Domain, Application, Infrastructure, API) with no framework leakage inward.
+2. All external dependencies listed with planned interfaces (`ICache`, `IMessageBus`, `IEventPublisher`, `IAuthService`, `IRepository<T>`).
+3. Security baseline planned: JWT auth scopes, validation strategy, global rate limiting & CORS.
+4. Observability skeleton defined: structured logging approach, health/readiness endpoints, metrics list, OpenTelemetry tracing coverage plan (≥90%).
+5. Performance targets acknowledged (P50 <100ms, P95 <400ms typical read) with initial risk assessment.
+6. Testing strategy drafted: domain/application unit coverage goals (≥95% handlers), integration adapter tests, contract tests against OpenAPI, validation pipeline test suite outline.
+7. Documentation artifacts planned: README impact, ADR need, spec/plan/tasks traceability.
+8. Event envelope fields confirmed (correlationId, causationId, tenantId, schemaVersion, timestamp).
+9. Non-negotiables reviewed (no paid packages, centralized validation, no sensitive log data, outbox pattern for events, resilience policies, feature flag strategy, graceful shutdown sequence, versioning approach).
+10. Resilience policy set defined (retry, circuit breaker, timeout) with initial thresholds.
+11. Outbox dispatcher design chosen (polling interval, batching, retry strategy).
+12. Feature flag evaluation mechanism & lifecycle documented.
+13. Graceful shutdown procedure outlined (drain order: HTTP → consumers → outbox → connections).
+14. Deployment artifacts list (Compose, Aspire manifests, Helm chart skeleton) enumerated.
 
 ## Project Structure
 

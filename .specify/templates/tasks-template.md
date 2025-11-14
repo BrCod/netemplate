@@ -66,8 +66,15 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T005 [P] Implement authentication/authorization framework
 - [ ] T006 [P] Setup API routing and middleware structure
 - [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
+- [ ] T008 Configure error handling and logging infrastructure (problem+json middleware)
 - [ ] T009 Setup environment configuration management
+- [ ] T010 Implement correlation & tracing (OpenTelemetry) middleware and baseline instrumentation
+- [ ] T011 Implement resilience policies (retry, circuit breaker, timeout) provider registration
+- [ ] T012 Implement outbox table + dispatcher skeleton
+- [ ] T013 Implement feature flag service abstraction and in-memory provider
+- [ ] T014 Implement graceful shutdown hooks (hosted service or lifecycle handlers)
+- [ ] T015 Implement rate limiting and CORS global policies
+- [ ] T016 Implement contract test baseline (OpenAPI validation harness)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -150,12 +157,15 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] TXXX [P] Documentation updates in docs/
+- [ ] TXXX [P] Documentation updates (feature flags lifecycle, resilience policy tuning)
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
+- [ ] TXXX Trace coverage audit (ensure ≥90%)
+- [ ] TXXX Outbox reliability audit & metrics review
+- [ ] TXXX Contract test coverage audit (ensure ≥95% endpoints)
 
 ---
 

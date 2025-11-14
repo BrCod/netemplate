@@ -1,0 +1,156 @@
+openapi: 3.0.3
+info:
+  title: Clean Architecture API Template
+  version: 1.0.0
+  description: Base API template with Products sample, health endpoints, and versioning.
+servers:
+  - url: https://localhost:5001
+paths:
+  /api/v1/products:
+    get:
+      summary: List products
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - in: query
+          name: cursor
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paged list of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+                  nextCursor: { type: string, nullable: true }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    post:
+      summary: Create product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCreate' }
+      responses:
+        '201':
+          description: Created product
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/products/{id}:
+    get:
+      summary: Get product by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    put:
+      summary: Update product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductUpdate' }
+      responses:
+        '200': { description: Updated product, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    delete:
+      summary: Deactivate product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Product deactivated }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /health/live:
+    get:
+      summary: Liveness check
+      responses:
+        '200': { description: Service process running }
+  /health/ready:
+    get:
+      summary: Readiness aggregation
+      responses:
+        '200': { description: All dependencies healthy }
+        '503': { description: One or more dependencies degraded/unhealthy }
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        price: { type: number, format: decimal }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        isActive: { type: boolean }
+    ProductCreate:
+      type: object
+      required: [name, price]
+      properties:
+        name: { type: string, minLength: 3, maxLength: 200 }
+        description: { type: string, maxLength: 1000 }
+        price: { type: number, minimum: 0 }
+    ProductUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 3, maxLength: 200 }
+        description: { type: string, maxLength: 1000 }
+        price: { type: number, minimum: 0 }
+        isActive: { type: boolean }
+  responses:
+    ValidationProblem:
+      description: Validation error
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              traceId: { type: string }
+              correlationId: { type: string }
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items: { type: string }
+    Unauthorized:
+      description: Invalid or missing JWT
+    NotFound:
+      description: Resource not found
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds until next allowed request

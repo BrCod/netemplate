@@ -1,0 +1,23 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+packages/
+# Rider
+.idea/
+# VS Code
+.vscode/
+# Logs
+*.log
+# Docker
+Dockerfile*
+.dockerignore
+# Env
+.env*
+# Test
+TestResults/
+# Others
+*.tmp
+Thumbs.db
+.DS_Store
