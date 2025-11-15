@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddDbContext<AppDbContext>();
 builder.Services.AddScoped<IRepository<Domain.Entities.Product>, ProductRepository>();
+builder.Services.AddScoped<Application.Services.ProductService>();
 builder.Services.AddSingleton<ICache, RedisCacheAdapter>();
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
 builder.Services.AddSingleton<IAuthService, JwtAuthService>();
