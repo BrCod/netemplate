@@ -19,15 +19,59 @@ builder.Services.AddSingleton<ICache, RedisCacheAdapter>();
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
 builder.Services.AddSingleton<IAuthService, JwtAuthService>();
 
+// JWT Authentication configuration
+var jwtSection = builder.Configuration.GetSection("JWT");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // Configure JWT options (issuer, audience, keys)
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSection["Issuer"],
+            ValidAudience = jwtSection["Audience"],
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSection["Secret"] ?? "YourSuperSecretKey")),
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
     });
 
+// Rate Limiting configuration (fixed window per IP)
+var rateSection = builder.Configuration.GetSection("RateLimiting");
 builder.Services.AddRateLimiter(options =>
 {
-    // Configure global and per-endpoint rate limiting
+    int permitLimit = int.TryParse(rateSection["PermitLimit"], out var p) ? p : 100;
+    int windowSeconds = int.TryParse(rateSection["WindowSeconds"], out var w) ? w : 60;
+    int queueLimit = int.TryParse(rateSection["QueueLimit"], out var q) ? q : 0;
+    string policyName = rateSection["PolicyName"] ?? "default";
+
+    options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueLimit = queueLimit,
+                AutoReplenishment = true
+            }
+        )
+    );
+
+    options.AddPolicy(policyName, ctx =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueLimit = queueLimit,
+                AutoReplenishment = true
+            }
+        )
+    );
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
 builder.Services.AddCors(options =>
