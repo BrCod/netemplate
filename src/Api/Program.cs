@@ -6,8 +6,9 @@ using Infrastructure.Redis;
 using Infrastructure.RabbitMq;
 using Infrastructure.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
+// using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
+using Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,6 @@ builder.Services.AddDbContext<AppDbContext>();
 builder.Services.AddScoped<IRepository<Domain.Entities.Product>, ProductRepository>();
 builder.Services.AddSingleton<ICache, RedisCacheAdapter>();
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
-builder.Services.AddSingleton<IMessageBus, RabbitMqPublisher>();
 builder.Services.AddSingleton<IAuthService, JwtAuthService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

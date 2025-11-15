@@ -23,15 +23,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "Infrastructure.RabbitMq",
+              "Title": "Infrastructure.RabbitMq.csproj",
               "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Infrastructure\\RabbitMq\\Infrastructure.RabbitMq.csproj",
               "RelativeDocumentMoniker": "src\\Infrastructure\\RabbitMq\\Infrastructure.RabbitMq.csproj",
               "ToolTip": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Infrastructure\\RabbitMq\\Infrastructure.RabbitMq.csproj",
               "RelativeToolTip": "src\\Infrastructure\\RabbitMq\\Infrastructure.RabbitMq.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-11-14T01:39:16.519Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-11-14T01:39:16.519Z"
             },
             {
               "$type": "Document",
@@ -41,7 +40,7 @@
               "RelativeDocumentMoniker": "src\\Infrastructure\\RabbitMq\\RabbitMqPublisher.cs",
               "ToolTip": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Infrastructure\\RabbitMq\\RabbitMqPublisher.cs",
               "RelativeToolTip": "src\\Infrastructure\\RabbitMq\\RabbitMqPublisher.cs",
-              "ViewState": "AgIAABAAAAAAAAAAAAAQwCEAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAABAAAAAAAAAAAAAzwCEAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-11-14T01:35:41.977Z",
               "EditorCaption": ""
