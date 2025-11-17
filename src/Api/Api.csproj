@@ -10,10 +10,12 @@
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Rabbitmq" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
     <PackageReference Include="Npgsql" Version="9.0.4" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="NWebsec.AspNetCore.Middleware" Version="3.0.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0" />
@@ -23,6 +25,7 @@
     <PackageReference Include="RabbitMQ.Client" Version="7.2.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.1" />
   </ItemGroup>
 
     <ItemGroup>
@@ -32,6 +35,7 @@
       <ProjectReference Include="..\Infrastructure\Redis\Infrastructure.Redis.csproj" />
       <ProjectReference Include="..\Infrastructure\RabbitMq\Infrastructure.RabbitMq.csproj" />
       <ProjectReference Include="..\Infrastructure\Auth\Infrastructure.Auth.csproj" />
+      <ProjectReference Include="..\Infrastructure\Policies\Infrastructure.Policies.csproj" />
     </ItemGroup>
 
 </Project>

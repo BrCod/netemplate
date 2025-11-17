@@ -1,4 +1,3 @@
-
 using Application.Interfaces;
 using Infrastructure.Postgres;
 using Infrastructure.Postgres.Repositories;
@@ -9,16 +8,44 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 // using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
 using Api.Middleware;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using StackExchange.Redis;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure logging with console output
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
+});
+builder.Logging.AddFilter((category, level) => level >= LogLevel.Information);
+
 // Add services to the container
-builder.Services.AddDbContext<AppDbContext>();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IRepository<Domain.Entities.Product>, ProductRepository>();
+builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
 builder.Services.AddScoped<Application.Services.ProductService>();
+
+// Redis configuration
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+
 builder.Services.AddSingleton<ICache, RedisCacheAdapter>();
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
 builder.Services.AddSingleton<IAuthService, JwtAuthService>();
+
+// OpenTelemetry configuration
+Api.Observability.OpenTelemetryConfig.Configure(builder.Services);
+
+// FluentValidation registration
+builder.Services.AddValidatorsFromAssemblyContaining<Application.Validators.ProductCreateValidator>();
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
 
 // JWT Authentication configuration
 var jwtSection = builder.Configuration.GetSection("JWT");
@@ -81,7 +108,13 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Suppress automatic 400 response; let ErrorHandlingMiddleware produce RFC 7807
+        options.SuppressModelStateInvalidFilter = false;
+    });
+// TODO: Add API versioning library later; currently version encoded in route segment (/api/v1/)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -109,6 +142,13 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+// Register outbox dispatcher
+builder.Services.AddScoped<Infrastructure.Postgres.Outbox.OutboxDispatcher>();
+builder.Services.AddHostedService<OutboxDispatcherHostedService>();
+
+// Register resilience policy provider
+builder.Services.AddScoped<Infrastructure.Policies.ResiliencePolicyProvider>();
 
 var app = builder.Build();
 

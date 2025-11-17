@@ -36,6 +36,25 @@ namespace Infrastructure.Postgres.Repositories
         public async Task<IEnumerable<Product>> GetAllAsync() => await _context.Products.ToListAsync();
 
         /// <summary>
+        /// Retrieves a paged set of products using a simple cursor (last Id) ordering by Id.
+        /// </summary>
+        /// <param name="limit">Maximum number of items to return.</param>
+        /// <param name="cursor">Last seen product Id (GUID string) or null to start.</param>
+        /// <returns>Items and next cursor if more data exists.</returns>
+        public async Task<(IEnumerable<Product> Items, string? NextCursor)> ListPagedAsync(int limit, string? cursor)
+        {
+            var query = _context.Products.AsQueryable();
+            query = query.OrderBy(p => p.Id);
+            if (Guid.TryParse(cursor, out var lastId))
+            {
+                query = query.Where(p => p.Id.CompareTo(lastId) > 0);
+            }
+            var items = await query.Take(limit).ToListAsync();
+            var next = items.Count == limit ? items.Last().Id.ToString() : null;
+            return (items, next);
+        }
+
+        /// <summary>
         /// Adds a new product asynchronously.
         /// </summary>
         /// <param name="entity">The product to add.</param>

@@ -1,11 +1,11 @@
-using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 
 namespace Api.Middleware
 {
     /// <summary>
-    /// Middleware for validating request data and model state.
+    /// Middleware for validating request data and model state, producing RFC 7807 responses.
     /// </summary>
     public class ValidationMiddleware
     {
@@ -30,31 +30,11 @@ namespace Api.Middleware
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task InvokeAsync(HttpContext context)
         {
-            try
-            {
-                await _next(context);
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning("Validation failed: {ValidationError}", ex.Message);
-                await HandleValidationExceptionAsync(context, ex);
-            }
-        }
-
-        private static async Task HandleValidationExceptionAsync(HttpContext context, ValidationException exception)
-        {
-            var response = context.Response;
-            response.ContentType = "application/json";
-            response.StatusCode = (int)HttpStatusCode.BadRequest;
-
-            var result = new
-            {
-                error = "Validation Error",
-                message = exception.Message,
-                statusCode = (int)HttpStatusCode.BadRequest
-            };
-
-            await response.WriteAsync(JsonSerializer.Serialize(result));
+            await _next(context);
+            
+            // Model state validation happens in the controller action via [ApiController] attribute
+            // FluentValidation errors are caught by ErrorHandlingMiddleware as ValidationException
+            // This middleware remains as a potential extension point for pre-action validation
         }
     }
 }

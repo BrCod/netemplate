@@ -1,22 +1,33 @@
 using Application.DTOs;
+using FluentValidation;
 
 namespace Application.Validators
 {
     /// <summary>
-    /// Validator for message envelope DTO.
+    /// FluentValidation validator for MessageEnvelope.
     /// </summary>
-    public class EnvelopeValidator
+    public class EnvelopeValidator : AbstractValidator<MessageEnvelope>
     {
-        /// <summary>Validate envelope fields and constraints.</summary>
-        public bool Validate(MessageEnvelope envelope)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EnvelopeValidator"/> class.
+        /// </summary>
+        public EnvelopeValidator()
         {
-            if (envelope.CorrelationId == Guid.Empty)
-                return false;
-            if (envelope.SchemaVersion <= 0)
-                return false;
-            if (envelope.Timestamp > DateTime.UtcNow.AddMinutes(5))
-                return false;
-            return true;
+            RuleFor(x => x.CorrelationId)
+                .NotEmpty().WithMessage("CorrelationId is required.");
+
+            RuleFor(x => x.SchemaVersion)
+                .GreaterThan(0).WithMessage("SchemaVersion must be positive.");
+
+            RuleFor(x => x.Timestamp)
+                .LessThanOrEqualTo(DateTime.UtcNow.AddMinutes(5))
+                .WithMessage("Timestamp must not be more than 5 minutes in the future (clock skew tolerance).");
+
+            RuleFor(x => x.EventType)
+                .NotEmpty().WithMessage("EventType is required.");
+
+            RuleFor(x => x.Payload)
+                .NotNull().WithMessage("Payload is required.");
         }
     }
 }

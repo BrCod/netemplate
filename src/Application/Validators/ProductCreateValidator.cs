@@ -1,22 +1,30 @@
-using Domain.Entities;
+using Application.DTOs;
+using FluentValidation;
 
 namespace Application.Validators
 {
     /// <summary>
-    /// Validator for Product entity creation.
+    /// FluentValidation validator for Product creation requests.
     /// </summary>
-    public class ProductCreateValidator
+    public class ProductCreateValidator : AbstractValidator<ProductDto>
     {
-        /// <summary>Validate Product creation rules.</summary>
-        public bool Validate(Product product)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ProductCreateValidator"/> class.
+        /// </summary>
+        public ProductCreateValidator()
         {
-            if (string.IsNullOrWhiteSpace(product.Name) || product.Name.Length < 3 || product.Name.Length > 200)
-                return false;
-            if (product.Price < 0)
-                return false;
-            if (product.Description != null && product.Description.Length > 1000)
-                return false;
-            return true;
+            RuleFor(x => x.Name)
+                .NotEmpty().WithMessage("Product name is required.")
+                .NotNull().WithMessage("Product name cannot be null.")
+                .Length(3, 200).WithMessage("Product name must be between 3 and 200 characters.")
+                .Must(name => !string.IsNullOrWhiteSpace(name)).WithMessage("Product name cannot be only whitespace.");
+
+            RuleFor(x => x.Price)
+                .GreaterThanOrEqualTo(0).WithMessage("Price must be non-negative.");
+
+            RuleFor(x => x.Description)
+                .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters.")
+                .When(x => x.Description != null);
         }
     }
 }

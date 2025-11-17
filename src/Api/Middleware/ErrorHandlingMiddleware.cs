@@ -1,10 +1,12 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
+using FluentValidation;
 
 namespace Api.Middleware
 {
     /// <summary>
-    /// Middleware for handling exceptions and errors globally.
+    /// Middleware for handling exceptions and errors globally with RFC 7807 problem+json.
     /// </summary>
     public class ErrorHandlingMiddleware
     {
@@ -35,42 +37,85 @@ namespace Api.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An unhandled exception occurred while processing the request");
                 await HandleExceptionAsync(context, ex);
             }
         }
 
-        private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
-            var response = context.Response;
-            response.ContentType = "application/json";
+            var correlationId = Activity.Current?.Id ?? context.TraceIdentifier;
+            var traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
 
-            var result = exception switch
+            _logger.LogError(exception, "Unhandled exception - CorrelationId: {CorrelationId}", correlationId);
+
+            var response = context.Response;
+            response.ContentType = "application/problem+json";
+
+            var problemDetails = exception switch
             {
-                ArgumentNullException => new { 
-                    error = "Bad Request", 
-                    message = "Invalid input parameter", 
-                    statusCode = (int)HttpStatusCode.BadRequest 
+                ValidationException validationEx => new Application.DTOs.ProblemDetails
+                {
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                    Title = "Validation Error",
+                    Status = (int)HttpStatusCode.BadRequest,
+                    Detail = "One or more validation errors occurred.",
+                    Instance = context.Request.Path,
+                    CorrelationId = correlationId,
+                    TraceId = traceId,
+                    Errors = validationEx.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.Select(e => e.ErrorMessage).ToArray()
+                        )
                 },
-                ArgumentException => new { 
-                    error = "Bad Request", 
-                    message = exception.Message, 
-                    statusCode = (int)HttpStatusCode.BadRequest 
+                ArgumentNullException => new Application.DTOs.ProblemDetails
+                {
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                    Title = "Bad Request",
+                    Status = (int)HttpStatusCode.BadRequest,
+                    Detail = "Invalid input parameter.",
+                    Instance = context.Request.Path,
+                    CorrelationId = correlationId,
+                    TraceId = traceId
                 },
-                UnauthorizedAccessException => new { 
-                    error = "Unauthorized", 
-                    message = "Access denied", 
-                    statusCode = (int)HttpStatusCode.Unauthorized 
+                ArgumentException argEx => new Application.DTOs.ProblemDetails
+                {
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                    Title = "Bad Request",
+                    Status = (int)HttpStatusCode.BadRequest,
+                    Detail = argEx.Message,
+                    Instance = context.Request.Path,
+                    CorrelationId = correlationId,
+                    TraceId = traceId
                 },
-                _ => new { 
-                    error = "Internal Server Error", 
-                    message = "An error occurred while processing your request", 
-                    statusCode = (int)HttpStatusCode.InternalServerError 
+                UnauthorizedAccessException => new Application.DTOs.ProblemDetails
+                {
+                    Type = "https://tools.ietf.org/html/rfc7235#section-3.1",
+                    Title = "Unauthorized",
+                    Status = (int)HttpStatusCode.Unauthorized,
+                    Detail = "Access denied.",
+                    Instance = context.Request.Path,
+                    CorrelationId = correlationId,
+                    TraceId = traceId
+                },
+                _ => new Application.DTOs.ProblemDetails
+                {
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+                    Title = "Internal Server Error",
+                    Status = (int)HttpStatusCode.InternalServerError,
+                    Detail = "An error occurred while processing your request.",
+                    Instance = context.Request.Path,
+                    CorrelationId = correlationId,
+                    TraceId = traceId
                 }
             };
 
-            response.StatusCode = result.statusCode;
-            await response.WriteAsync(JsonSerializer.Serialize(result));
+            response.StatusCode = problemDetails.Status;
+            await response.WriteAsync(JsonSerializer.Serialize(problemDetails, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            }));
         }
     }
 }

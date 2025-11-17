@@ -17,7 +17,7 @@ namespace Infrastructure.Redis
         /// </summary>
         /// <param name="redis">The Redis connection multiplexer.</param>
         /// <param name="tenantId">The tenant identifier.</param>
-        public RedisCacheAdapter(IConnectionMultiplexer redis, string tenantId)
+        public RedisCacheAdapter(IConnectionMultiplexer redis, string? tenantId = null)
         {
             _db = redis.GetDatabase();
             _tenantPrefix = tenantId ?? "default";
