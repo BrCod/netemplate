@@ -1,0 +1,6 @@
+@Netemplate.Api_HostAddress = http://localhost:5174
+
+GET {{Netemplate.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

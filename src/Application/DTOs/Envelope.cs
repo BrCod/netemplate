@@ -1,25 +1,18 @@
-using System;
+namespace Netemplate.Application.DTOs;
 
-namespace Application.DTOs
+public sealed class Envelope<T>
 {
-    /// <summary>
-    /// Envelope for event/message metadata.
-    /// </summary>
-    public class MessageEnvelope
+    public Guid CorrelationId { get; init; }
+    public Guid? CausationId { get; init; }
+    public string? TenantId { get; init; }
+    public int SchemaVersion { get; init; } = 1;
+    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
+    public string EventType { get; init; } = typeof(T).Name;
+    public T Payload { get; init; }
+
+    public Envelope(T payload)
     {
-        /// <summary>Correlation ID for distributed tracing.</summary>
-        public Guid CorrelationId { get; set; }
-        /// <summary>Causation ID for event lineage.</summary>
-        public Guid? CausationId { get; set; }
-        /// <summary>Tenant identifier (multi-tenancy).</summary>
-        public string? TenantId { get; set; }
-        /// <summary>Schema version for envelope evolution.</summary>
-        public int SchemaVersion { get; set; }
-        /// <summary>UTC timestamp of event creation.</summary>
-        public DateTime Timestamp { get; set; }
-        /// <summary>Type of event/message.</summary>
-        public string EventType { get; set; } = string.Empty;
-        /// <summary>Serialized payload object.</summary>
-        public object Payload { get; set; } = default!;
+        Payload = payload;
+        CorrelationId = Guid.NewGuid();
     }
 }

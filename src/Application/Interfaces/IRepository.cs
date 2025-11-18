@@ -1,23 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+namespace Netemplate.Application.Interfaces;
 
-namespace Application.Interfaces
+public interface IRepository<T> where T : class
 {
-    /// <summary>
-    /// Generic repository interface for CRUD operations.
-    /// </summary>
-    public interface IRepository<T>
-    {
-        /// <summary>Get entity by ID.</summary>
-        Task<T?> GetByIdAsync(Guid id);
-        /// <summary>Get all entities.</summary>
-        Task<IEnumerable<T>> GetAllAsync();
-        /// <summary>Add a new entity.</summary>
-        Task AddAsync(T entity);
-        /// <summary>Update an existing entity.</summary>
-        Task UpdateAsync(T entity);
-        /// <summary>Delete entity by ID.</summary>
-        Task DeleteAsync(Guid id);
-    }
+    Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<T>> ListAsync(int skip = 0, int take = 50, CancellationToken ct = default);
+    Task AddAsync(T entity, CancellationToken ct = default);
+    Task UpdateAsync(T entity, CancellationToken ct = default);
+    Task DeleteAsync(T entity, CancellationToken ct = default);
 }

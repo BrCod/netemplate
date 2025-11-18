@@ -1,60 +1,34 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net;
-using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 
-namespace Api.Middleware
+namespace Netemplate.Api.Middleware;
+
+public sealed class ValidationMiddleware
 {
-    /// <summary>
-    /// Middleware for validating request data and model state.
-    /// </summary>
-    public class ValidationMiddleware
+    private readonly RequestDelegate _next;
+
+    public ValidationMiddleware(RequestDelegate next)
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<ValidationMiddleware> _logger;
+        _next = next;
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ValidationMiddleware"/> class.
-        /// </summary>
-        /// <param name="next">The next middleware in the pipeline.</param>
-        /// <param name="logger">The logger instance.</param>
-        public ValidationMiddleware(RequestDelegate next, ILogger<ValidationMiddleware> logger)
+    public async Task InvokeAsync(HttpContext context)
+    {
+        if (!context.Request.HasJsonContentType() && context.Request.ContentLength > 0)
         {
-            _next = next;
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// Invokes the middleware to perform validation checks.
-        /// </summary>
-        /// <param name="context">The HTTP context.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task InvokeAsync(HttpContext context)
-        {
-            try
+            var problemDetails = new ProblemDetails
             {
-                await _next(context);
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogWarning("Validation failed: {ValidationError}", ex.Message);
-                await HandleValidationExceptionAsync(context, ex);
-            }
-        }
-
-        private static async Task HandleValidationExceptionAsync(HttpContext context, ValidationException exception)
-        {
-            var response = context.Response;
-            response.ContentType = "application/json";
-            response.StatusCode = (int)HttpStatusCode.BadRequest;
-
-            var result = new
-            {
-                error = "Validation Error",
-                message = exception.Message,
-                statusCode = (int)HttpStatusCode.BadRequest
+                Status = StatusCodes.Status415UnsupportedMediaType,
+                Title = "Unsupported Media Type",
+                Detail = "Only application/json content type is supported.",
+                Instance = context.Request.Path
             };
 
-            await response.WriteAsync(JsonSerializer.Serialize(result));
+            context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
+            context.Response.ContentType = "application/problem+json";
+            await context.Response.WriteAsJsonAsync(problemDetails);
+            return;
         }
+
+        await _next(context);
     }
 }

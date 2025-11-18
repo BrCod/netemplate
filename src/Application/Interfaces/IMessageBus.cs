@@ -1,15 +1,7 @@
-using System.Threading.Tasks;
+namespace Netemplate.Application.Interfaces;
 
-namespace Application.Interfaces
+public interface IMessageBus
 {
-    /// <summary>
-    /// Interface for message bus publish/subscribe operations.
-    /// </summary>
-    public interface IMessageBus
-    {
-        /// <summary>Publish a message to the bus.</summary>
-        Task PublishAsync(object message);
-        /// <summary>Subscribe to a topic with a handler.</summary>
-        Task SubscribeAsync<T>(string topic, Func<T, Task> handler);
-    }
+    Task PublishAsync<T>(string topic, T message, CancellationToken ct = default);
+    Task SubscribeAsync(string topic, Func<byte[], CancellationToken, Task> handler, CancellationToken ct = default);
 }

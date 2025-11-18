@@ -1,15 +1,6 @@
-using System.Threading.Tasks;
+namespace Netemplate.Application.Interfaces;
 
-namespace Application.Interfaces
+public interface IAuthService
 {
-    /// <summary>
-    /// Interface for JWT authentication service.
-    /// </summary>
-    public interface IAuthService
-    {
-        /// <summary>Validate JWT token.</summary>
-        Task<bool> ValidateTokenAsync(string token);
-        /// <summary>Extract user ID from JWT token.</summary>
-        Task<string?> GetUserIdAsync(string token);
-    }
+    Task<bool> ValidateTokenAsync(string token, CancellationToken ct = default);
 }

@@ -1,18 +1,8 @@
-using System;
-using System.Threading.Tasks;
+namespace Netemplate.Application.Interfaces;
 
-namespace Application.Interfaces
+public interface ICache
 {
-    /// <summary>
-    /// Interface for cache adapter operations.
-    /// </summary>
-    public interface ICache
-    {
-        /// <summary>Get cached value by key.</summary>
-        Task<T?> GetAsync<T>(string key);
-        /// <summary>Set value in cache with optional TTL.</summary>
-        Task SetAsync<T>(string key, T value, TimeSpan? ttl = null);
-        /// <summary>Remove value from cache by key.</summary>
-        Task RemoveAsync(string key);
-    }
+    Task<T?> GetAsync<T>(string key, CancellationToken ct = default);
+    Task SetAsync<T>(string key, T value, TimeSpan? ttl = null, CancellationToken ct = default);
+    Task RemoveAsync(string key, CancellationToken ct = default);
 }

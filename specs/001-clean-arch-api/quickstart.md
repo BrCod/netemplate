@@ -1,78 +1,135 @@
-# Quickstart: Using the Clean Architecture API Template
+
+# Quickstart: Clean Architecture .NET 8 API Template
+
+This guide walks new contributors through setup and incremental phases defined in the constitution, spec, and tasks.
+
+---
 
 ## 1. Clone & Restore
-```powershell
+```bash
 git clone <repo-url>
 cd netemplate
-# restore & build
 dotnet restore
 dotnet build
 ```
 
-## 2. Start Infrastructure (Postgres, Redis, RabbitMQ)
-```powershell
+---
+
+## 2. Start Infrastructure
+```bash
 docker compose -f build/docker-compose.yml up -d
 ```
+Starts Postgres, Redis, RabbitMQ.
+
+---
 
 ## 3. Run API
-```powershell
+```bash
 dotnet run --project src/Api/Api.csproj
 ```
-Visit Swagger: https://localhost:5001/swagger
+Visit Swagger: [https://localhost:5001/swagger](https://localhost:5001/swagger)
 
-## 4. Add a New Bounded Context
-```powershell
-# Example scaffold script (to be implemented):
-./scripts/scaffold-context.ps1 -Name Inventory
+---
+
+## 4. Phase 1 – Setup
+- Create `src/`, `tests/`, `build/`, `docs/` folders.
+- Add `.editorconfig`, `.gitignore`, `Directory.Build.props`.
+- Initialize solution and projects (Api, Application, Domain, Infrastructure).
+
+---
+
+## 5. Phase 2 – Foundational
+- Define base entities, value objects, domain events.
+- Create interfaces (`IRepository<T>`, `ICache`, `IMessageBus`, `IEventPublisher`, `IAuthService`).
+- Implement envelope contract with correlationId, causationId, tenantId, schemaVersion, timestamp.
+- Setup DbContext, migrations (idempotent + rollbackable).
+- Implement Redis cache, RabbitMQ publisher/subscriber, JWT validation.
+- Register DI, add middleware (logging, validation, rate limiting, CORS, security headers).
+- Add health checks, Swagger, structured logging, OpenTelemetry hooks.
+- Register resilience policies (Polly).
+- Implement outbox skeleton, feature flag service, graceful shutdown hooks.
+- Add schema registry and trace sampling config.
+
+---
+
+## 6. Phase 3 – User Story 1 (Scaffolding)
+- Scaffold sample `Products` context.
+- Implement Product entity, repository, service, controller.
+- Add validation, logging, pagination, caching.
+- Write unit, integration, and contract tests.
+
+---
+
+## 7. Phase 4 – User Story 2 (Observability & Governance)
+- Implement `/health/ready` aggregation.
+- Ensure correlationId propagation in logs.
+- Add config-driven rate limit and CORS policies.
+- Integrate secrets vault (Azure Key Vault/HashiCorp Vault).
+- Test health endpoints and log correlation.
+
+---
+
+## 8. Phase 5 – User Story 3 (CI Pipeline)
+- Create Dockerfile and docker-compose.yml.
+- Add build/test scripts.
+- Configure GitHub Actions workflow.
+- Add CI compliance checks (DI purity, resilience config, tracing coverage, contract validation).
+- Add smoke and integration tests.
+- Monitor error budget (≤0.1% failure rate).
+
+---
+
+## 9. Phase 6 – User Story 4 (Resilience & Outbox Reliability)
+- Implement centralized resilience config (retry, circuit breaker, timeout, bulkhead).
+- Add dead-letter queue handling + operator alerting.
+- Write resilience fault injection tests.
+- Test outbox dispatcher reliability under simulated failures.
+
+---
+
+## 10. Phase 7 – User Story 5 (Feature Flags & Versioning)
+- Implement feature flag audit trail persistence.
+- Enforce semantic versioning in CI.
+- Add contract tests for concurrent API versions (`/api/v1`, `/api/v2`).
+
+---
+
+## 11. Phase 8 – User Story 6 (Localization & Globalization)
+- Implement localization middleware for problem+json responses.
+- Add culture-aware formatting (dates, numbers, currencies, time zones).
+- Provide multilingual OpenAPI docs (English + French baseline).
+- Add localization tests (English + French).
+- Implement fallback to English if translation missing.
+- Document localization/globalization strategy in ADR.
+
+---
+
+## 12. Final Phase – Polish & Governance
+- Update README, contribution guide, replaceability guide.
+- Add ADRs for key decisions (schema registry, localization).
+- Add living architecture diagrams (C4 model).
+- Run audits: trace coverage (≥90%), outbox reliability, contract test coverage (≥95%).
+- Conduct quarterly governance review.
+
+---
+
+## Health & Readiness
+- `/health/live` → process liveness.
+- `/health/ready` → adapter readiness.
+
+---
+
+## Security Checklist
+- JWT issuer/audience configured.
+- Signing key rotation documented.
+- Validation pre-handler active.
+- No sensitive payload logging.
+- Secure headers enabled (HSTS in production).
+
+---
+
+## Next Steps
+- Use `spec.md` and `tasks.md` to track incremental progress.
+- Each phase is independently testable and can be developed in parallel.
 ```
-Generates domain/application/infrastructure folders and a sample endpoint.
 
-## 5. Add a Product Endpoint
-1. Define Product entity in `src/Domain/Entities/Product.cs`.
-2. Create use case in `src/Application/UseCases/Products/CreateProductHandler.cs`.
-3. Add validator in `src/Application/Validators/ProductCreateValidator.cs`.
-4. Implement repository in `src/Infrastructure/Persistence.Postgres/Repositories/ProductRepository.cs`.
-5. Wire endpoint in `src/Api/Endpoints/ProductsEndpoints.cs`.
-
-## 6. Enable Caching
-- Register Redis adapter in DI.
-- Add cache-aside logic in use case (check `ICache`, fall back to repository, set TTL).
-
-## 7. Publish Events
-- Raise domain event `ProductCreatedEvent` in entity factory.
-- Application layer translates to envelope and calls `IEventPublisher`.
-
-## 8. Run Tests
-```powershell
-dotnet test
-```
-Integration tests spin up containers (Testcontainers or compose). Ensure environment variables for connection strings are set.
-
-## 9. Health & Readiness
-- Hit `/health/live` for process liveness.
-- Hit `/health/ready` after startup to confirm adapters.
-
-## 10. Replace an Adapter (Example: Switch Persistence to Dapper)
-1. Implement new repository in `src/Infrastructure/Persistence.Postgres/DapperProductRepository.cs`.
-2. Register it replacing `IRepository<Product>` in composition root.
-3. Run tests & health checks.
-
-## 11. Rate Limiting Policy
-Configure rate limiting in `src/Api/Config/RateLimiting.cs` and tag endpoints.
-
-## 12. Observability
-- Add correlation middleware before logging.
-- Configure OpenTelemetry (optional) exporters in `src/Infrastructure/Observability/Telemetry.cs`.
-
-## 13. CI Smoke
-Pipeline runs build, unit/integration tests, then invokes `/health/ready` and a sample product CRUD sequence.
-
-## 14. Security Checklist
-- JWT issuer/audience configured
-- Signing key rotation documented
-- Validation pre-handler active
-- No sensitive payload logging
-- Secure headers enabled (HSTS in production)
-
-## 15. Next Steps
-Use `/speckit.tasks` to generate task breakdown, then implement incremental user stories.

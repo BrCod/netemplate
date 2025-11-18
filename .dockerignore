@@ -1,0 +1,21 @@
+# Exclude VCS and IDE files
+.git/
+.gitignore
+.vscode/
+.idea/
+.vs/
+
+# Build system files
+**/Dockerfile*
+.dockerignore
+
+# Dependencies and build outputs
+node_modules/
+bin/
+obj/
+
+# Logs, env, coverage
+*.log*
+.env*
+coverage/
+TestResults/

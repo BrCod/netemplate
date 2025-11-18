@@ -1,13 +1,6 @@
-using System.Threading.Tasks;
+namespace Netemplate.Application.Interfaces;
 
-namespace Application.Interfaces
+public interface IEventPublisher
 {
-    /// <summary>
-    /// Interface for publishing domain events.
-    /// </summary>
-    public interface IEventPublisher
-    {
-        /// <summary>Publish a domain event.</summary>
-        Task PublishEventAsync(object @event);
-    }
+    Task PublishAsync<T>(T @event, CancellationToken ct = default);
 }
