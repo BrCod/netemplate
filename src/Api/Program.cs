@@ -6,18 +6,53 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Netemplate.Application.Interfaces;
 using Netemplate.Infrastructure.Persistence.Postgres;
+using Netemplate.Infrastructure.Persistence.Postgres.Outbox;
 using Netemplate.Infrastructure.Cache.Redis;
 using Netemplate.Infrastructure.Messaging.RabbitMq;
 using Netemplate.Infrastructure.Auth.Jwt;
 using Netemplate.Api.Middleware;
+using Netemplate.Api.Logging;
+using Netemplate.Api.Observability;
+using Netemplate.Api.Health;
+using Netemplate.Api.Configuration;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
 using StackExchange.Redis;
 using RabbitMQ.Client;
 using Microsoft.OpenApi;
+using Microsoft.AspNetCore.HttpsPolicy;
 
 
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configuration options
+builder.Services.Configure<SecurityPoliciesOptions>(builder.Configuration.GetSection(SecurityPoliciesOptions.SectionName));
+builder.Services.Configure<SecretsOptions>(builder.Configuration.GetSection(SecretsOptions.SectionName));
+
+// Secret management
+builder.Services.AddSingleton<ISecretProvider, EnvironmentSecretProvider>();
+
+// Security: HTTPS enforcement
+builder.Services.AddHsts(options =>
+{
+    options.Preload = true;
+    options.IncludeSubDomains = true;
+    options.MaxAge = TimeSpan.FromDays(365);
+});
+
+// Security: Request size limits
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 5_242_880; // 5MB
+});
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 5_242_880; // 5MB
+});
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -28,15 +63,20 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
-// Cache
+// Application Services
+builder.Services.AddScoped<Netemplate.Application.Services.IProductService, Netemplate.Application.Services.ProductService>();
+
+// Cache (resilient)
 var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
-builder.Services.AddSingleton<ICache, RedisCache>();
+builder.Services.AddSingleton<RedisCache>();
+builder.Services.AddSingleton<ICache>(sp => new ResilientCache(sp.GetRequiredService<RedisCache>()));
 
-// Messaging
+// Messaging (resilient)
 var rabbitMqConnection = builder.Configuration.GetConnectionString("RabbitMQ") ?? "amqp://guest:guest@localhost:5672";
 builder.Services.AddSingleton<IConnectionFactory>(new ConnectionFactory { Uri = new Uri(rabbitMqConnection) });
-builder.Services.AddSingleton<IMessageBus, RabbitMqMessageBus>();
+builder.Services.AddSingleton<RabbitMqMessageBus>();
+builder.Services.AddSingleton<IMessageBus>(sp => new ResilientMessageBus(sp.GetRequiredService<RabbitMqMessageBus>()));
 
 // Auth
 builder.Services.AddSingleton<IAuthService, JwtAuthService>();
@@ -113,13 +153,45 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// OpenTelemetry with adaptive sampling
+var samplingRatio = builder.Configuration.GetValue<double>("OpenTelemetry:SamplingRatio", 0.1);
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService("netemplate-api", serviceVersion: "1.0.0")
+        .AddAttributes(new Dictionary<string, object>
+        {
+            ["environment"] = builder.Environment.EnvironmentName,
+            ["host.name"] = Environment.MachineName
+        }))
+    .WithTracing(tracing => tracing
+        .SetSampler(new AdaptiveSampler(samplingRatio))
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddConsoleExporter())
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddConsoleExporter());
+
+// Feature Flags
+builder.Services.AddSingleton<Netemplate.Application.Services.IFeatureFlagService, Netemplate.Application.Services.InMemoryFeatureFlagService>();
+
+// Schema Registry
+builder.Services.AddSingleton<Netemplate.Application.Messaging.SchemaRegistry.IEventSchemaRegistry, Netemplate.Application.Messaging.SchemaRegistry.InMemoryEventSchemaRegistry>();
+
+// Outbox Dispatcher
+builder.Services.AddHostedService<OutboxDispatcher>();
+
 // Health checks
+builder.Services.AddSingleton<ApplicationReadinessCheck>();
 builder.Services.AddHealthChecks()
-    .AddNpgSql(connectionString, name: "postgres")
-    .AddRedis(redisConnection, name: "redis")
-    .AddRabbitMQ(rabbitMqConnection, name: "rabbitmq");
+    .AddCheck<ApplicationReadinessCheck>("app_readiness", tags: new[] { "readiness" })
+    .AddNpgSql(connectionString, name: "postgres", tags: new[] { "db", "readiness" })
+    .AddRedis(redisConnection, name: "redis", tags: new[] { "cache", "readiness" })
+    .AddRabbitMQ(rabbitMqConnection, name: "rabbitmq", tags: new[] { "messaging", "readiness" });
 
 // API
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -161,7 +233,11 @@ var app = builder.Build();
 
 // Pipeline
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<RequestSizeLimitMiddleware>();
 app.UseMiddleware<ValidationMiddleware>();
+
+// Security headers
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 app.UseExceptionHandler();
 
@@ -170,6 +246,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
 app.UseCors();
@@ -177,9 +257,23 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Graceful shutdown hook
+var lifetime = app.Lifetime;
+lifetime.ApplicationStopping.Register(() =>
+{
+    Console.WriteLine("Application is shutting down - flushing telemetry/logs");
+});
+
+// Controllers
+app.MapControllers();
+
 // Health endpoints
-app.MapHealthChecks("/health/live").AllowAnonymous();
-app.MapHealthChecks("/health/ready").AllowAnonymous();
+app.MapHealthChecks("/health/live", HealthCheckConfiguration.CreateLivenessOptions()).AllowAnonymous();
+app.MapHealthChecks("/health/ready", HealthCheckConfiguration.CreateReadinessOptions()).AllowAnonymous();
+
+// Mark application as ready
+var readinessCheck = app.Services.GetRequiredService<ApplicationReadinessCheck>();
+readinessCheck.MarkAsReady();
 
 var summaries = new[]
 {
@@ -206,3 +300,6 @@ record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
+
+// Make Program accessible for integration tests
+public partial class Program { }

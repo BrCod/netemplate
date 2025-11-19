@@ -24,21 +24,21 @@
 - [X] T011 [P] Implement RabbitMQ connection, publisher/subscriber, envelope serialization in src/Infrastructure/RabbitMq/
 - [X] T012 [P] Configure JWT token validation (issuer, audience, keys) in src/Infrastructure/Auth/
 - [X] T013 [P] Register DI for all interfaces and adapters in src/Api/Program.cs
-- [ ] T014 [P] Add request logging (correlation IDs), error handling (problem+json), validation pipeline, rate limiting, CORS, security headers in src/Api/Middleware/
+- [X] T014 [P] Add request logging (correlation IDs), error handling (problem+json), validation pipeline, rate limiting, CORS, security headers in src/Api/Middleware/
 - [X] T015 [P] Implement health checks (liveness/readiness) for infra adapters in src/Api/Health/
-- [ ] T016 [P] Add Swagger/OpenAPI with auth and response schemas in src/Api/Swagger/
-- [ ] T017 [P] Implement structured logging config with redaction, log scopes for correlationId in src/Api/Logging/
-- [ ] T018 [P] Add OpenTelemetry hooks, metrics, exporter config placeholders in src/Api/Observability/
-- [ ] T019 [P] Register retry policies (Polly) for infra adapters in src/Infrastructure/Policies/
-- [ ] T020 [P] Implement outbox table and dispatcher skeleton in src/Infrastructure/Postgres/Outbox/
-- [ ] T021 [P] Implement feature flag service abstraction and in-memory provider in src/Application/Services/FeatureFlags/
-- [ ] T022 [P] Implement graceful shutdown hooks in src/Api/Shutdown/
-- [ ] T023 [P] Enforce HTTPS, HSTS, secure headers, strict CORS in src/Api/Security/
-- [ ] T024 [P] Implement input size limits, safe deserialization, model binding limits in src/Api/Security/
-- [ ] T025 [P] Implement rate limiting policies and 429 responses in src/Api/Middleware/RateLimiting/
-- [ ] T026 [P] Add logging redaction and PII guardrails in src/Api/Logging/
-- [ ] T027 [P] Implement schema registry contract for message envelopes in src/Application/Messaging/SchemaRegistry/
-- [ ] T028 [P] Add trace sampling configuration in src/Api/Observability/Config/
+- [X] T016 [P] Add Swagger/OpenAPI with auth and response schemas in src/Api/Swagger/
+- [X] T017 [P] Implement structured logging config with redaction, log scopes for correlationId in src/Api/Logging/
+- [X] T018 [P] Add OpenTelemetry hooks, metrics, exporter config placeholders in src/Api/Observability/
+- [X] T019 [P] Register retry policies (Polly) for infra adapters in src/Infrastructure/Policies/
+- [X] T020 [P] Implement outbox table and dispatcher skeleton in src/Infrastructure/Postgres/Outbox/
+- [X] T021 [P] Implement feature flag service abstraction and in-memory provider in src/Application/Services/FeatureFlags/
+- [X] T022 [P] Implement graceful shutdown hooks in src/Api/Shutdown/
+- [X] T023 [P] Enforce HTTPS, HSTS, secure headers, strict CORS in src/Api/Security/
+- [X] T024 [P] Implement input size limits, safe deserialization, model binding limits in src/Api/Security/
+- [X] T025 [P] Implement rate limiting policies and 429 responses in src/Api/Middleware/RateLimiting/
+- [X] T026 [P] Add logging redaction and PII guardrails in src/Api/Logging/
+- [X] T027 [P] Implement schema registry contract for message envelopes in src/Application/Messaging/SchemaRegistry/
+- [X] T028 [P] Add trace sampling configuration in src/Api/Observability/Config/
 
 ---
 
@@ -47,16 +47,16 @@
 **Goal**: Enable rapid creation of new bounded contexts with all conventions pre-wired  
 **Independent Test**: Scaffold sample context, verify validation, auth, logging
 
-- [ ] T029 [P] [US1] Scaffold sample "Products" context: Domain, Application, Infrastructure, API folders in src/Products/
-- [ ] T030 [P] [US1] Create Product entity, value object, domain event in src/Products/Domain/
-- [ ] T031 [P] [US1] Implement ProductRepository in src/Products/Infrastructure/Postgres/
-- [ ] T032 [P] [US1] Implement ProductService in src/Products/Application/Services/
-- [ ] T033 [P] [US1] Add ProductController with pagination and caching in src/Products/Api/
-- [ ] T034 [US1] Add validation and error handling for Product endpoints in src/Products/Api/
-- [ ] T035 [US1] Add logging for Product operations in src/Products/Api/
-- [ ] T036 [US1] Add unit tests for Product domain, validators, service in tests/Products/Unit/
-- [ ] T037 [US1] Add integration tests for ProductRepository, ProductService in tests/Products/Integration/
-- [ ] T038 [US1] Add contract test for Product endpoint in tests/Products/Contract/
+- [X] T029 [P] [US1] Scaffold sample "Products" context: Domain, Application, Infrastructure, API folders in src/Products/
+- [X] T030 [P] [US1] Create Product entity, value object, domain event in src/Products/Domain/
+- [X] T031 [P] [US1] Implement ProductRepository in src/Products/Infrastructure/Postgres/
+- [X] T032 [P] [US1] Implement ProductService in src/Products/Application/Services/
+- [X] T033 [P] [US1] Add ProductController with pagination and caching in src/Products/Api/
+- [X] T034 [US1] Add validation and error handling for Product endpoints in src/Products/Api/
+- [X] T035 [US1] Add logging for Product operations in src/Products/Api/
+- [X] T036 [US1] Add unit tests for Product domain, validators, service in tests/Products/Unit/
+- [X] T037 [US1] Add integration tests for ProductRepository, ProductService in tests/Products/Integration/
+- [X] T038 [US1] Add contract test for Product endpoint in tests/Products/Contract/
 
 ---
 
@@ -65,13 +65,13 @@
 **Goal**: Enable health/readiness, log correlation, config-driven rate limits/CORS, secret rotation  
 **Independent Test**: Deploy locally, hit health endpoints, adjust config, verify changes
 
-- [ ] T039 [P] [US2] Implement /health/ready endpoint aggregation in src/Api/Health/
-- [ ] T040 [P] [US2] Implement log correlationId propagation in src/Api/Logging/
-- [ ] T041 [P] [US2] Add config-driven rate limit and CORS policies in src/Api/Middleware/
-- [ ] T042 [P] [US2] Implement secret rotation config in src/Api/Security/
-- [ ] T043 [P] [US2] Integrate secrets vault (Azure Key Vault/HashiCorp Vault) in src/Infrastructure/Security/
-- [ ] T044 [US2] Add integration tests for health/readiness endpoints in tests/Api/Integration/
-- [ ] T045 [US2] Add contract test for log correlation in tests/Api/Contract/
+- [X] T039 [P] [US2] Implement /health/ready endpoint aggregation in src/Api/Health/
+- [X] T040 [P] [US2] Implement log correlationId propagation in src/Api/Logging/
+- [X] T041 [P] [US2] Add config-driven rate limit and CORS policies in src/Api/Middleware/
+- [X] T042 [P] [US2] Implement secret rotation config in src/Api/Security/
+- [X] T043 [P] [US2] Integrate secrets vault (Azure Key Vault/HashiCorp Vault) in src/Infrastructure/Security/
+- [X] T044 [US2] Add integration tests for health/readiness endpoints in tests/Api/Integration/
+- [X] T045 [US2] Add contract test for log correlation in tests/Api/Contract/
 
 ---
 

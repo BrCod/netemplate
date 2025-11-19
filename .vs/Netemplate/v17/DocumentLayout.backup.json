@@ -23,10 +23,6 @@
       "RelativeMoniker": "D:0:0:{BF8ED4BA-F595-413E-B1FA-FDC9B7F1C3EA}|src\\Infrastructure.Auth.Jwt\\Netemplate.Infrastructure.Auth.Jwt.csproj|solutionrelative:src\\infrastructure.auth.jwt\\jwtauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{BF8ED4BA-F595-413E-B1FA-FDC9B7F1C3EA}|src\\Infrastructure.Auth.Jwt\\Netemplate.Infrastructure.Auth.Jwt.csproj|c:\\data\\data\\dotnettemplate\\netemplate\\src\\infrastructure.auth.jwt\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BF8ED4BA-F595-413E-B1FA-FDC9B7F1C3EA}|src\\Infrastructure.Auth.Jwt\\Netemplate.Infrastructure.Auth.Jwt.csproj|solutionrelative:src\\infrastructure.auth.jwt\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{991ACB28-4B12-4EB2-BC4E-E29E17905FE0}|src\\Application\\Netemplate.Application.csproj|c:\\data\\data\\dotnettemplate\\netemplate\\src\\application\\dtos\\envelope.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{991ACB28-4B12-4EB2-BC4E-E29E17905FE0}|src\\Application\\Netemplate.Application.csproj|solutionrelative:src\\application\\dtos\\envelope.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -46,7 +42,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Document",
@@ -67,18 +63,6 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "ValidationResult.cs",
-              "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Application\\Validators\\ValidationResult.cs",
-              "RelativeDocumentMoniker": "src\\Application\\Validators\\ValidationResult.cs",
-              "ToolTip": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Application\\Validators\\ValidationResult.cs",
-              "RelativeToolTip": "src\\Application\\Validators\\ValidationResult.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-18T01:53:26.897Z"
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 3,
               "Title": "IValidator.cs",
               "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Application\\Validators\\IValidator.cs",
@@ -87,7 +71,8 @@
               "RelativeToolTip": "src\\Application\\Validators\\IValidator.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-18T01:53:24.427Z"
+              "WhenOpened": "2025-11-18T01:53:24.427Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -99,7 +84,8 @@
               "RelativeToolTip": "src\\Infrastructure.Auth.Jwt\\JwtAuthService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-18T01:53:09.688Z"
+              "WhenOpened": "2025-11-18T01:53:09.688Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -107,9 +93,9 @@
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Api\\Program.cs",
               "RelativeDocumentMoniker": "src\\Api\\Program.cs",
-              "ToolTip": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Api\\Program.cs*",
-              "RelativeToolTip": "src\\Api\\Program.cs*",
-              "ViewState": "AgIAAA4AAAAAAAAAAAAAAA4AAAAXAAAAAAAAAA==",
+              "ToolTip": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Api\\Program.cs",
+              "RelativeToolTip": "src\\Api\\Program.cs",
+              "ViewState": "AgIAAIcAAAAAAAAAAAAAAJoAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-11-18T01:52:27.052Z",
               "EditorCaption": ""
@@ -120,19 +106,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Infrastructure.Auth.Jwt\\Class1.cs",
-              "RelativeDocumentMoniker": "src\\Infrastructure.Auth.Jwt\\Class1.cs",
-              "ToolTip": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Infrastructure.Auth.Jwt\\Class1.cs",
-              "RelativeToolTip": "src\\Infrastructure.Auth.Jwt\\Class1.cs",
+              "DocumentIndex": 2,
+              "Title": "ValidationResult.cs",
+              "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Application\\Validators\\ValidationResult.cs",
+              "RelativeDocumentMoniker": "src\\Application\\Validators\\ValidationResult.cs",
+              "ToolTip": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Application\\Validators\\ValidationResult.cs",
+              "RelativeToolTip": "src\\Application\\Validators\\ValidationResult.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-18T01:53:06.514Z"
+              "WhenOpened": "2025-11-18T01:53:26.897Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 5,
               "Title": "Envelope.cs",
               "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Application\\DTOs\\Envelope.cs",
               "RelativeDocumentMoniker": "src\\Application\\DTOs\\Envelope.cs",
@@ -140,11 +127,12 @@
               "RelativeToolTip": "src\\Application\\DTOs\\Envelope.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-16T20:13:40.6Z"
+              "WhenOpened": "2025-11-16T20:13:40.6Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 6,
               "Title": "Infrastructure.RabbitMq.csproj",
               "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Infrastructure\\RabbitMq\\Infrastructure.RabbitMq.csproj",
               "RelativeDocumentMoniker": "src\\Infrastructure\\RabbitMq\\Infrastructure.RabbitMq.csproj",
@@ -155,7 +143,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 7,
               "Title": "RabbitMqPublisher.cs",
               "DocumentMoniker": "C:\\Data\\Data\\DotnetTemplate\\netemplate\\src\\Infrastructure\\RabbitMq\\RabbitMqPublisher.cs",
               "RelativeDocumentMoniker": "src\\Infrastructure\\RabbitMq\\RabbitMqPublisher.cs",
