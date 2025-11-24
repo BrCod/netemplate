@@ -71,13 +71,16 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            // Override authentication with test authentication that auto-succeeds
-            services.AddAuthentication(options =>
+            // Remove all authentication services and replace with test authentication
+            var authServices = services.Where(d => d.ServiceType.Namespace?.StartsWith("Microsoft.AspNetCore.Authentication") == true).ToList();
+            foreach (var authService in authServices)
             {
-                options.DefaultAuthenticateScheme = "TestAuth";
-                options.DefaultChallengeScheme = "TestAuth";
-            })
-            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestAuth", options => { });
+                services.Remove(authService);
+            }
+
+            // Add test authentication that always succeeds
+            services.AddAuthentication("TestAuth")
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestAuth", options => { });
         });
 
         base.ConfigureWebHost(builder);
