@@ -95,6 +95,9 @@ if (!isTesting)
     builder.Services.AddSingleton<IConnectionFactory>(new ConnectionFactory { Uri = new Uri(rabbitMqConnection) });
     builder.Services.AddSingleton<RabbitMqMessageBus>();
     builder.Services.AddSingleton<IMessageBus>(sp => new ResilientMessageBus(sp.GetRequiredService<RabbitMqMessageBus>(), sp.GetRequiredService<IResiliencePolicyRegistry>()));
+// Event Publisher
+builder.Services.AddScoped<IEventPublisher, Netemplate.Infrastructure.Messaging.RabbitMq.EventPublisher>();
+
 }
 
 // Dead-letter queue
@@ -201,6 +204,10 @@ builder.Services.AddSingleton<Netemplate.Application.Services.IFeatureFlagServic
 // Schema Registry
 builder.Services.AddSingleton<Netemplate.Application.Messaging.SchemaRegistry.IEventSchemaRegistry, Netemplate.Application.Messaging.SchemaRegistry.InMemoryEventSchemaRegistry>();
 
+// Culture Formatters
+builder.Services.AddSingleton<Netemplate.Application.Localization.Formatters.CultureFormatter>();
+builder.Services.AddScoped<Netemplate.Application.Localization.Formatters.ICultureFormatter, Netemplate.Application.Localization.Formatters.CurrentCultureFormatter>();
+
 // Outbox Dispatcher - avoid starting background service in Testing
 if (!isTesting)
 {
@@ -223,16 +230,39 @@ if (!isTesting)
 // Localization for problem+json responses
 builder.Services.AddApiLocalization();
 
+// Swagger Localization
+builder.Services.AddSingleton<Netemplate.Api.Swagger.Localization.ISwaggerLocalizer, Netemplate.Api.Swagger.Localization.SwaggerLocalizer>();
+
 // API
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+var swaggerLocalizer = new Netemplate.Api.Swagger.Localization.SwaggerLocalizer();
+var supportedCultures = swaggerLocalizer.GetSupportedCultures();
+var languageList = string.Join(", ", supportedCultures.Select(c => $"{c.DisplayName} ({c.Name})"));
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "Clean Architecture API", 
+        Title = swaggerLocalizer.GetTitle(),
         Version = "v1",
-        Description = ".NET 8 Clean Architecture API Template"
+        Description = swaggerLocalizer.GetDescription() + 
+            $"\n\n**Supported Languages:** {languageList}" +
+            "\n\n**Localization:**" +
+            "\n- Use `Accept-Language` header to specify preferred language" +
+            "\n- Use `?culture=xx-XX` query parameter to override language" +
+            "\n- Default language: English (en-US)" +
+            "\n- Error messages and responses will be localized based on your preference",
+        Contact = new OpenApiContact
+        {
+            Name = swaggerLocalizer.GetContactName(),
+            Email = swaggerLocalizer.GetContactEmail()
+        },
+        License = new OpenApiLicense
+        {
+            Name = swaggerLocalizer.GetLicenseName()
+        }
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -307,8 +337,11 @@ app.MapControllers();
 app.MapHealthChecks("/health/live", HealthCheckConfiguration.CreateLivenessOptions()).AllowAnonymous();
 app.MapHealthChecks("/health/ready", HealthCheckConfiguration.CreateReadinessOptions()).AllowAnonymous();
 
-// Initialize dead-letter queue infrastructure
-await app.Services.InitializeDeadLetterQueueAsync();
+// Initialize dead-letter queue infrastructure (skip in test environment)
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    await app.Services.InitializeDeadLetterQueueAsync();
+}
 
 // Mark application as ready
 var readinessCheck = app.Services.GetRequiredService<ApplicationReadinessCheck>();

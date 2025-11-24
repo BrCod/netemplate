@@ -6,8 +6,6 @@ using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 using Netemplate.Application.Interfaces;
 using Netemplate.Infrastructure.Cache.Redis;
-using Netemplate.Infrastructure.Messaging.RabbitMq;
-using Netemplate.Infrastructure.Resilience;
 
 namespace Netemplate.Api.IntegrationTests;
 
@@ -33,32 +31,22 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             var multiplexerDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IConnectionMultiplexer));
             if (multiplexerDescriptor != null) services.Remove(multiplexerDescriptor);
 
-            // Remove resilient cache wrapper
-            var resilientCacheDescriptor = services.FirstOrDefault(d => d.ImplementationType == typeof(ResilientCache));
-            if (resilientCacheDescriptor != null) services.Remove(resilientCacheDescriptor);
-
-            // Remove RedisCache registration
-            var redisCacheDescriptor = services.FirstOrDefault(d => d.ImplementationType == typeof(RedisCache) || d.ServiceType == typeof(RedisCache));
-            if (redisCacheDescriptor != null) services.Remove(redisCacheDescriptor);
-
-            // Remove ICache registration
+            // Remove cache registrations
             var icacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ICache));
             if (icacheDescriptor != null) services.Remove(icacheDescriptor);
 
-            // Remove resilient message bus wrapper
-            var resilientMessageBusDescriptor = services.FirstOrDefault(d => d.ImplementationType == typeof(ResilientMessageBus));
-            if (resilientMessageBusDescriptor != null) services.Remove(resilientMessageBusDescriptor);
-
-            // Remove RabbitMqMessageBus registration
-            var rabbitDescriptor = services.FirstOrDefault(d => d.ImplementationType == typeof(RabbitMqMessageBus) || d.ServiceType == typeof(RabbitMqMessageBus));
-            if (rabbitDescriptor != null) services.Remove(rabbitDescriptor);
-
+            // Remove message bus registrations
             var imessageDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IMessageBus));
             if (imessageDescriptor != null) services.Remove(imessageDescriptor);
+            // Remove event publisher registrations
+            var ieventDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEventPublisher));
+            if (ieventDescriptor != null) services.Remove(ieventDescriptor);
+
 
             // Register in-memory replacements
             services.AddSingleton<ICache, InMemoryCache>();
             services.AddSingleton<IMessageBus, InMemoryMessageBus>();
+            services.AddScoped<IEventPublisher, InMemoryEventPublisher>();
         });
 
         base.ConfigureWebHost(builder);

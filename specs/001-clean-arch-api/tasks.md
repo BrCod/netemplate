@@ -119,8 +119,8 @@
 **Independent Test**: Configure locale to `fr-CA`; send invalid payload; confirm problem+json response localized in French.
 
 - [X] T061 [P] [US6] Implement localization middleware for problem+json responses in src/Api/Middleware/Localization/
-- [ ] T062 [P] [US6] Add culture-aware formatting (dates, numbers, currencies, time zones) in src/Application/Localization/Formatters/
-- [ ] T063 [P] [US6] Add multilingual OpenAPI documentation (English + French baseline) in src/Api/Swagger/Localization/
-- [ ] T064 [US6] Add localization tests (English + French) in tests/Api/Localization/
+- [X] T062 [P] [US6] Add culture-aware formatting (dates, numbers, currencies, time zones) in src/Application/Localization/Formatters/
+- [X] T063 [P] [US6] Add multilingual OpenAPI documentation (English + Turkish baseline) in src/Api/Swagger/Localization/
+- [ ] T064 [US6] Add localization tests (English + Turkish) in tests/Api/Localization/
 - [ ] T065 [US6] Implement fallback strategy to default language (English) if translation missing
 - [ ] T066 [US6] Add governance ADR documenting localization/globalization strategy in docs/adr/ADR-localization.md
