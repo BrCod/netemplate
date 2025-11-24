@@ -146,6 +146,7 @@ var rateLimitConfig = builder.Configuration.GetSection("RateLimiting");
 var permitLimit = rateLimitConfig.GetValue<int>("PermitLimit", 100);
 var window = rateLimitConfig.GetValue<TimeSpan>("Window", TimeSpan.FromMinutes(1));
 var queueLimit = rateLimitConfig.GetValue<int>("QueueLimit", 10);
+var segmentsPerWindow = rateLimitConfig.GetValue<int>("SegmentsPerWindow", 1);
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -157,6 +158,7 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = permitLimit,
                 Window = window,
                 QueueLimit = queueLimit,
+                SegmentsPerWindow = segmentsPerWindow,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             }));
 
@@ -337,10 +339,19 @@ app.MapControllers();
 app.MapHealthChecks("/health/live", HealthCheckConfiguration.CreateLivenessOptions()).AllowAnonymous();
 app.MapHealthChecks("/health/ready", HealthCheckConfiguration.CreateReadinessOptions()).AllowAnonymous();
 
-// Initialize dead-letter queue infrastructure (skip in test environment)
-if (!app.Environment.IsEnvironment("Testing"))
+// Initialize dead-letter queue infrastructure (skip in test environment or if disabled)
+var dlqEnabled = app.Configuration.GetValue<bool>("DeadLetterQueue:Enabled", true);
+if (dlqEnabled && !app.Environment.IsEnvironment("Testing"))
 {
-    await app.Services.InitializeDeadLetterQueueAsync();
+    try
+    {
+        await app.Services.InitializeDeadLetterQueueAsync();
+    }
+    catch (Exception ex)
+    {
+        // Log warning but don't fail startup if DLQ initialization fails
+        app.Logger.LogWarning(ex, "Failed to initialize dead-letter queue. Application will continue without DLQ monitoring.");
+    }
 }
 
 // Mark application as ready
