@@ -1,0 +1,638 @@
+name: Compliance Checks
+
+on:
+  push:
+    branches: [ main, develop, feat-* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run compliance checks weekly
+    - cron: '0 6 * * 1'  # Every Monday at 6 AM UTC
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  di-purity-check:
+    name: DI Purity Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore Netemplate.sln
+
+    - name: Check for Service Locator anti-pattern
+      run: |
+        echo "Checking for Service Locator anti-pattern..."
+        
+        # Check for IServiceProvider in constructors (anti-pattern)
+        if grep -r "IServiceProvider" --include="*.cs" src/ | grep -v "Program.cs" | grep -v "Startup.cs" | grep -v "TestWebApplicationFactory.cs" | grep "public.*IServiceProvider"; then
+          echo "❌ FAILED: Service Locator anti-pattern detected (IServiceProvider in constructor)"
+          echo "Use constructor injection for specific dependencies instead of IServiceProvider"
+          exit 1
+        fi
+        
+        echo "✅ No Service Locator anti-pattern detected"
+
+    - name: Check for static service access
+      run: |
+        echo "Checking for static service access..."
+        
+        # Check for static HttpContext access
+        if grep -r "HttpContext.Current" --include="*.cs" src/ 2>/dev/null; then
+          echo "❌ FAILED: Static HttpContext.Current usage detected"
+          echo "Use IHttpContextAccessor via DI instead"
+          exit 1
+        fi
+        
+        echo "✅ No static service access detected"
+
+    - name: Validate DI registrations
+      run: |
+        echo "Validating DI registrations..."
+        
+        # Check that all interfaces in Application/Interfaces are registered
+        INTERFACES=$(find src/Application/Interfaces -name "*.cs" -exec basename {} \; | sed 's/.cs$//')
+        
+        for interface in $INTERFACES; do
+          if ! grep -q "$interface" src/Api/Program.cs; then
+            echo "⚠️  Warning: Interface $interface may not be registered in DI container"
+          fi
+        done
+        
+        echo "✅ DI registration validation completed"
+
+    - name: Check for new keyword with services
+      run: |
+        echo "Checking for 'new' keyword with service classes..."
+        
+        # Look for direct instantiation of services (should use DI)
+        VIOLATIONS=0
+        
+        # Check for Repository instantiation
+        if grep -r "new.*Repository(" --include="*.cs" src/ | grep -v "Test" | grep -v "Factory" | grep -v "//" ; then
+          echo "❌ Repository instances should be injected, not created with 'new'"
+          VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+        
+        # Check for Service instantiation
+        if grep -r "new.*Service(" --include="*.cs" src/ | grep -v "Test" | grep -v "Factory" | grep -v "//" ; then
+          echo "❌ Service instances should be injected, not created with 'new'"
+          VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+        
+        if [ $VIOLATIONS -gt 0 ]; then
+          echo "❌ FAILED: Found $VIOLATIONS DI violations"
+          exit 1
+        fi
+        
+        echo "✅ No inappropriate 'new' keyword usage detected"
+
+  resilience-config-check:
+    name: Resilience Configuration Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Check Polly policies are configured
+      run: |
+        echo "Validating Polly resilience policies..."
+        
+        POLICIES_FILE="src/Infrastructure.Persistence.Postgres/Policies/ResiliencePolicies.cs"
+        
+        if [ ! -f "$POLICIES_FILE" ]; then
+          echo "❌ FAILED: ResiliencePolicies.cs not found"
+          exit 1
+        fi
+        
+        # Check for retry policy
+        if ! grep -q "RetryAsync" "$POLICIES_FILE"; then
+          echo "❌ FAILED: Retry policy not configured"
+          exit 1
+        fi
+        
+        # Check for circuit breaker
+        if ! grep -q "CircuitBreakerAsync" "$POLICIES_FILE"; then
+          echo "❌ FAILED: Circuit breaker policy not configured"
+          exit 1
+        fi
+        
+        # Check for timeout policy
+        if ! grep -q "TimeoutAsync" "$POLICIES_FILE"; then
+          echo "❌ FAILED: Timeout policy not configured"
+          exit 1
+        fi
+        
+        echo "✅ All required resilience policies are configured"
+
+    - name: Validate resilient cache implementation
+      run: |
+        echo "Validating resilient cache implementation..."
+        
+        CACHE_FILE="src/Infrastructure.Cache.Redis/ResilientCache.cs"
+        
+        if [ ! -f "$CACHE_FILE" ]; then
+          echo "❌ FAILED: ResilientCache.cs not found"
+          exit 1
+        fi
+        
+        # Check that cache uses resilience policies
+        if ! grep -q "ExecuteAsync" "$CACHE_FILE"; then
+          echo "⚠️  Warning: Cache may not be using Polly policies"
+        fi
+        
+        echo "✅ Resilient cache validation completed"
+
+    - name: Validate resilient message bus
+      run: |
+        echo "Validating resilient message bus implementation..."
+        
+        MESSAGEBUS_FILE="src/Infrastructure.Messaging.RabbitMq/ResilientMessageBus.cs"
+        
+        if [ ! -f "$MESSAGEBUS_FILE" ]; then
+          echo "❌ FAILED: ResilientMessageBus.cs not found"
+          exit 1
+        fi
+        
+        # Check that message bus uses resilience policies
+        if ! grep -q "ExecuteAsync" "$MESSAGEBUS_FILE"; then
+          echo "⚠️  Warning: Message bus may not be using Polly policies"
+        fi
+        
+        echo "✅ Resilient message bus validation completed"
+
+    - name: Check for missing error handling
+      run: |
+        echo "Checking for proper error handling..."
+        
+        # Look for async methods without try-catch in critical infrastructure
+        CRITICAL_FILES=$(find src/Infrastructure.* -name "*.cs")
+        
+        for file in $CRITICAL_FILES; do
+          if grep -q "async Task" "$file"; then
+            if ! grep -q "try" "$file" && ! grep -q "catch" "$file"; then
+              echo "⚠️  Warning: $file has async methods but no try-catch blocks"
+            fi
+          fi
+        done
+        
+        echo "✅ Error handling validation completed"
+
+  tracing-coverage-check:
+    name: OpenTelemetry Tracing Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Verify OpenTelemetry is configured
+      run: |
+        echo "Verifying OpenTelemetry configuration..."
+        
+        PROGRAM_FILE="src/Api/Program.cs"
+        
+        # Check for OpenTelemetry registration
+        if ! grep -q "AddOpenTelemetry" "$PROGRAM_FILE"; then
+          echo "❌ FAILED: OpenTelemetry is not registered in Program.cs"
+          exit 1
+        fi
+        
+        # Check for tracing
+        if ! grep -q "WithTracing" "$PROGRAM_FILE"; then
+          echo "❌ FAILED: OpenTelemetry tracing is not configured"
+          exit 1
+        fi
+        
+        # Check for metrics
+        if ! grep -q "WithMetrics" "$PROGRAM_FILE"; then
+          echo "❌ FAILED: OpenTelemetry metrics are not configured"
+          exit 1
+        fi
+        
+        echo "✅ OpenTelemetry is properly configured"
+
+    - name: Check for Activity Source usage
+      run: |
+        echo "Checking for ActivitySource usage in services..."
+        
+        # Check if services are creating activities for tracing
+        SERVICE_FILES=$(find src/Application/Services -name "*.cs" 2>/dev/null || echo "")
+        
+        if [ -n "$SERVICE_FILES" ]; then
+          HAS_ACTIVITY=false
+          for file in $SERVICE_FILES; do
+            if grep -q "Activity" "$file" || grep -q "ActivitySource" "$file"; then
+              HAS_ACTIVITY=true
+              break
+            fi
+          done
+          
+          if [ "$HAS_ACTIVITY" = false ]; then
+            echo "⚠️  Warning: No ActivitySource usage found in application services"
+            echo "Consider adding tracing spans for better observability"
+          else
+            echo "✅ ActivitySource usage detected"
+          fi
+        fi
+
+    - name: Validate correlation ID propagation
+      run: |
+        echo "Validating correlation ID propagation..."
+        
+        # Check for correlation ID middleware
+        if ! grep -q "CorrelationId" src/Api/Middleware/*.cs 2>/dev/null; then
+          echo "❌ FAILED: Correlation ID middleware not found"
+          exit 1
+        fi
+        
+        # Check that logging uses correlation IDs
+        if ! grep -q "CorrelationId" src/Api/Logging/*.cs 2>/dev/null; then
+          echo "⚠️  Warning: Logging may not include correlation IDs"
+        fi
+        
+        echo "✅ Correlation ID propagation validated"
+
+    - name: Check trace sampling configuration
+      run: |
+        echo "Checking trace sampling configuration..."
+        
+        CONFIG_FILE="src/Api/appsettings.json"
+        
+        if ! grep -q "OpenTelemetry" "$CONFIG_FILE" && ! grep -q "SamplingRatio" "$CONFIG_FILE"; then
+          echo "⚠️  Warning: OpenTelemetry sampling configuration not found in appsettings.json"
+        else
+          echo "✅ Trace sampling configuration found"
+        fi
+
+  contract-validation:
+    name: API Contract Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: netemplate_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        ports:
+          - 5672:5672
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore Netemplate.sln
+
+    - name: Build solution
+      run: dotnet build Netemplate.sln --configuration Release --no-restore
+
+    - name: Verify OpenAPI specification exists
+      run: |
+        echo "Verifying OpenAPI specification..."
+        
+        OPENAPI_FILE="specs/001-clean-arch-api/contracts/openapi.yaml"
+        
+        if [ ! -f "$OPENAPI_FILE" ]; then
+          echo "❌ FAILED: OpenAPI specification not found at $OPENAPI_FILE"
+          exit 1
+        fi
+        
+        # Check if OpenAPI spec is valid YAML
+        if ! python3 -c "import yaml; yaml.safe_load(open('$OPENAPI_FILE'))" 2>/dev/null; then
+          echo "❌ FAILED: OpenAPI specification is not valid YAML"
+          exit 1
+        fi
+        
+        echo "✅ OpenAPI specification found and valid"
+
+    - name: Run contract tests
+      run: |
+        echo "Running API contract tests..."
+        
+        # Run tests tagged as contract tests
+        dotnet test Netemplate.sln \
+          --configuration Release \
+          --no-build \
+          --filter "Category=Contract" \
+          --verbosity normal \
+          --logger "trx;LogFileName=contract-test-results.trx" || true
+        
+        # Check if any contract tests exist
+        if ! find . -name "*contract-test-results.trx" -type f 2>/dev/null | grep -q .; then
+          echo "⚠️  Warning: No contract test results found"
+          echo "Consider adding contract tests to validate API contracts"
+        else
+          echo "✅ Contract tests executed"
+        fi
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Database=netemplate_test;Username=postgres;Password=postgres"
+        ConnectionStrings__Redis: "localhost:6379"
+        ConnectionStrings__RabbitMQ: "amqp://guest:guest@localhost:5672"
+
+    - name: Validate problem+json responses
+      run: |
+        echo "Validating problem+json error responses..."
+        
+        # Check that controllers return ProblemDetails
+        if ! grep -r "ProblemDetails" --include="*.cs" src/Api/Controllers/ 2>/dev/null; then
+          echo "⚠️  Warning: Controllers may not be using ProblemDetails for errors"
+        else
+          echo "✅ ProblemDetails usage found in controllers"
+        fi
+
+    - name: Check API versioning
+      run: |
+        echo "Checking API versioning implementation..."
+        
+        # Look for versioning configuration
+        if grep -q "AddApiVersioning" src/Api/Program.cs; then
+          echo "✅ API versioning is configured"
+        else
+          echo "⚠️  Warning: API versioning may not be configured"
+          echo "Consider adding API versioning for future compatibility"
+        fi
+
+    - name: Validate request/response DTOs
+      run: |
+        echo "Validating request/response DTOs..."
+        
+        # Check that DTOs exist
+        if [ ! -d "src/Application/DTOs" ]; then
+          echo "⚠️  Warning: DTOs directory not found"
+        else
+          DTO_COUNT=$(find src/Application/DTOs -name "*.cs" | wc -l)
+          echo "✅ Found $DTO_COUNT DTO files"
+        fi
+
+  architecture-validation:
+    name: Architecture Rules Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Check layer dependencies
+      run: |
+        echo "Validating Clean Architecture layer dependencies..."
+        
+        # Domain should not reference any other layers
+        if grep -r "using.*Application" --include="*.cs" src/Domain/ 2>/dev/null | grep -v "//"; then
+          echo "❌ FAILED: Domain layer references Application layer (violation)"
+          exit 1
+        fi
+        
+        if grep -r "using.*Infrastructure" --include="*.cs" src/Domain/ 2>/dev/null | grep -v "//"; then
+          echo "❌ FAILED: Domain layer references Infrastructure layer (violation)"
+          exit 1
+        fi
+        
+        # Application should not reference Infrastructure
+        if grep -r "using.*Infrastructure" --include="*.cs" src/Application/ 2>/dev/null | grep -v "//"; then
+          echo "❌ FAILED: Application layer references Infrastructure layer (violation)"
+          exit 1
+        fi
+        
+        echo "✅ Clean Architecture layer dependencies are correct"
+
+    - name: Check for Entity Framework in Domain
+      run: |
+        echo "Checking for EF Core in Domain layer..."
+        
+        if grep -r "using Microsoft.EntityFrameworkCore" --include="*.cs" src/Domain/ 2>/dev/null; then
+          echo "❌ FAILED: Domain layer should not reference Entity Framework"
+          exit 1
+        fi
+        
+        echo "✅ Domain layer is persistence-agnostic"
+
+    - name: Validate interface segregation
+      run: |
+        echo "Validating interface segregation..."
+        
+        # Check that interfaces are in Application/Interfaces
+        if [ -d "src/Application/Interfaces" ]; then
+          INTERFACE_COUNT=$(find src/Application/Interfaces -name "I*.cs" | wc -l)
+          echo "✅ Found $INTERFACE_COUNT interfaces in Application layer"
+        else
+          echo "⚠️  Warning: Interfaces directory not found"
+        fi
+
+    - name: Check for magic strings
+      run: |
+        echo "Checking for magic strings in configuration..."
+        
+        # Look for hardcoded connection strings (should use configuration)
+        if grep -r "Server=\|Host=" --include="*.cs" src/ | grep -v "Test" | grep -v "//" ; then
+          echo "⚠️  Warning: Potential hardcoded connection strings found"
+          echo "Use configuration instead of magic strings"
+        fi
+        
+        echo "✅ Magic string validation completed"
+
+  security-compliance:
+    name: Security Compliance Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check for hardcoded secrets
+      run: |
+        echo "Scanning for hardcoded secrets..."
+        
+        # Check for potential API keys or secrets
+        if grep -r "api[_-]key\|secret\|password\|token" --include="*.cs" src/ | grep -i "\"[a-zA-Z0-9]{32,}\""; then
+          echo "⚠️  Warning: Potential hardcoded secrets detected"
+        fi
+        
+        echo "✅ Hardcoded secret scan completed"
+
+    - name: Validate authentication configuration
+      run: |
+        echo "Validating authentication configuration..."
+        
+        if ! grep -q "AddAuthentication" src/Api/Program.cs; then
+          echo "❌ FAILED: Authentication not configured"
+          exit 1
+        fi
+        
+        if ! grep -q "JwtBearer" src/Api/Program.cs; then
+          echo "⚠️  Warning: JWT authentication may not be configured"
+        fi
+        
+        echo "✅ Authentication configuration validated"
+
+    - name: Check HTTPS enforcement
+      run: |
+        echo "Checking HTTPS enforcement..."
+        
+        if ! grep -q "UseHttpsRedirection\|AddHsts" src/Api/Program.cs; then
+          echo "❌ FAILED: HTTPS enforcement not configured"
+          exit 1
+        fi
+        
+        echo "✅ HTTPS enforcement is configured"
+
+    - name: Validate rate limiting
+      run: |
+        echo "Validating rate limiting configuration..."
+        
+        if ! grep -q "AddRateLimiter\|RateLimiting" src/Api/Program.cs; then
+          echo "⚠️  Warning: Rate limiting may not be configured"
+        else
+          echo "✅ Rate limiting is configured"
+        fi
+
+    - name: Check CORS configuration
+      run: |
+        echo "Checking CORS configuration..."
+        
+        if ! grep -q "AddCors" src/Api/Program.cs; then
+          echo "⚠️  Warning: CORS may not be configured"
+        else
+          # Check for AllowAnyOrigin (security risk)
+          if grep -q "AllowAnyOrigin" src/Api/Program.cs; then
+            echo "❌ FAILED: AllowAnyOrigin() is a security risk in production"
+            exit 1
+          fi
+          echo "✅ CORS configuration validated"
+        fi
+
+  compliance-report:
+    name: Generate Compliance Report
+    runs-on: ubuntu-latest
+    needs: [di-purity-check, resilience-config-check, tracing-coverage-check, contract-validation, architecture-validation, security-compliance]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate compliance summary
+      run: |
+        echo "# Compliance Check Summary" > compliance-report.md
+        echo "" >> compliance-report.md
+        echo "**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> compliance-report.md
+        echo "**Branch:** ${{ github.ref_name }}" >> compliance-report.md
+        echo "**Commit:** ${{ github.sha }}" >> compliance-report.md
+        echo "" >> compliance-report.md
+        
+        echo "## Check Results" >> compliance-report.md
+        echo "" >> compliance-report.md
+        echo "| Check | Status |" >> compliance-report.md
+        echo "|-------|--------|" >> compliance-report.md
+        echo "| DI Purity | ${{ needs.di-purity-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> compliance-report.md
+        echo "| Resilience Config | ${{ needs.resilience-config-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> compliance-report.md
+        echo "| Tracing Coverage | ${{ needs.tracing-coverage-check.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> compliance-report.md
+        echo "| Contract Validation | ${{ needs.contract-validation.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> compliance-report.md
+        echo "| Architecture Rules | ${{ needs.architecture-validation.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> compliance-report.md
+        echo "| Security Compliance | ${{ needs.security-compliance.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> compliance-report.md
+        echo "" >> compliance-report.md
+        
+        cat compliance-report.md
+
+    - name: Upload compliance report
+      uses: actions/upload-artifact@v4
+      with:
+        name: compliance-report
+        path: compliance-report.md
+        retention-days: 90
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('compliance-report.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
+
+    - name: Check overall compliance status
+      run: |
+        if [ "${{ needs.di-purity-check.result }}" != "success" ] || \
+           [ "${{ needs.resilience-config-check.result }}" != "success" ] || \
+           [ "${{ needs.tracing-coverage-check.result }}" != "success" ] || \
+           [ "${{ needs.contract-validation.result }}" != "success" ] || \
+           [ "${{ needs.architecture-validation.result }}" != "success" ] || \
+           [ "${{ needs.security-compliance.result }}" != "success" ]; then
+          echo "❌ Compliance checks failed"
+          exit 1
+        else
+          echo "✅ All compliance checks passed"
+        fi

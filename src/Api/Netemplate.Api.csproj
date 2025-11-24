@@ -25,6 +25,7 @@
     <ProjectReference Include="..\Infrastructure.Cache.Redis\Netemplate.Infrastructure.Cache.Redis.csproj" />
     <ProjectReference Include="..\Infrastructure.Messaging.RabbitMq\Netemplate.Infrastructure.Messaging.RabbitMq.csproj" />
     <ProjectReference Include="..\Infrastructure.Auth.Jwt\Netemplate.Infrastructure.Auth.Jwt.csproj" />
+    <ProjectReference Include="..\Infrastructure.Policies\Netemplate.Infrastructure.Policies.csproj" />
   </ItemGroup>
 
 </Project>

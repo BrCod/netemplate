@@ -81,11 +81,11 @@
 **Independent Test**: Run CI script, verify all stages pass deterministically
 
 - [ ] T046 [P] [US3] Create Dockerfile for API in build/
-- [ ] T047 [P] [US3] Create docker-compose.yml with Postgres, Redis, RabbitMQ in build/
-- [ ] T048 [P] [US3] Add Makefile/PowerShell scripts for build/test/run/migrate/seed in build/
-- [ ] T049 [P] [US3] Add GitHub Actions workflow for CI build, tests, lint, artifact publish in .github/workflows/
-- [ ] T050 [P] [US3] Add CI compliance checks: DI purity, resilience config, tracing coverage, contract validation in .github/workflows/compliance.yml
-- [ ] T051 [US3] Add smoke tests for health endpoints, JWT-protected endpoint in tests/Api/Smoke/
+- [ ] T047 [P] [US3] Create docker-compose.yml with Postgres, Redis, RabbitMQ in build/ - NOT NEEDED FOR NOW, existing services will be used
+- [X] T048 [P] [US3] Add Makefile/PowerShell scripts for build/test/run/migrate/seed in build/
+- [X] T049 [P] [US3] Add GitHub Actions workflow for CI build, tests, lint, artifact publish in .github/workflows/
+- [X] T050 [P] [US3] Add CI compliance checks: DI purity, resilience config, tracing coverage, contract validation in .github/workflows/compliance.yml
+- [X] T051 [US3] Add smoke tests for health endpoints, JWT-protected endpoint in tests/Api/Smoke/
 - [ ] T052 [US3] Add integration tests for infra adapters in tests/Api/Integration/
 - [ ] T053 [US3] Add error budget monitoring (≤0.1% failure rate) in CI metrics validation step
 
@@ -96,10 +96,10 @@
 **Goal**: Validate retry/backoff, circuit breaker, and outbox dispatcher reliability under transient faults  
 **Independent Test**: Inject failures; confirm retries, circuit breaker trips, and outbox publishes succeed or DLQ captures failures
 
-- [ ] T054 [P] [US4] Implement centralized resilience config (retry, circuit breaker, timeout, bulkhead) in src/Infrastructure/Policies/Config/
-- [ ] T055 [P] [US4] Add dead-letter queue handling + operator alerting in src/Infrastructure/RabbitMq/DeadLetter/
-- [ ] T056 [US4] Add resilience fault injection tests in tests/Infrastructure/Resilience/
-- [ ] T057 [US4] Add outbox dispatcher reliability tests with simulated failures in tests/Infrastructure/Postgres/Outbox/
+- [X] T054 [P] [US4] Implement centralized resilience config (retry, circuit breaker, timeout, bulkhead) in src/Infrastructure/Policies/Config/
+- [X] T055 [P] [US4] Add dead-letter queue handling + operator alerting in src/Infrastructure/RabbitMq/DeadLetter/
+- [X] T056 [US4] Add resilience fault injection tests in tests/Infrastructure/Resilience/
+- [X] T057 [US4] Add outbox dispatcher reliability tests with simulated failures in tests/Infrastructure/Postgres/Outbox/
 
 ---
 
@@ -108,9 +108,9 @@
 **Goal**: Toggle feature flags without redeploy and validate API versioning strategy  
 **Independent Test**: Toggle flag in config; confirm behavior changes within 60s; call /api/v1 and /api/v2 concurrently
 
-- [ ] T058 [P] [US5] Implement feature flag audit trail persistence in src/Infrastructure/FeatureFlags/
+- [X] T058 [P] [US5] Implement feature flag audit trail persistence in src/Infrastructure/FeatureFlags/
 - [ ] T059 [P] [US5] Add semantic versioning enforcement in CI pipeline (.github/workflows/versioning.yml)
-- [ ] T060 [US5] Add contract tests for concurrent API versions (/api/v1, /api/v2) in tests/Api/Contract/Versioning/
+- [X] T060 [US5] Add contract tests for concurrent API versions (/api/v1, /api/v2) in tests/Api/Contract/Versioning/
 
 ---
 ## Phase 8: User Story 6 - Localization & Globalization (Priority: P6) [US6]
@@ -118,7 +118,7 @@
 **Goal**: Ensure the API supports multiple languages, cultures, and time zones for error messages, validation responses, and documentation.  
 **Independent Test**: Configure locale to `fr-CA`; send invalid payload; confirm problem+json response localized in French.
 
-- [ ] T061 [P] [US6] Implement localization middleware for problem+json responses in src/Api/Middleware/Localization/
+- [X] T061 [P] [US6] Implement localization middleware for problem+json responses in src/Api/Middleware/Localization/
 - [ ] T062 [P] [US6] Add culture-aware formatting (dates, numbers, currencies, time zones) in src/Application/Localization/Formatters/
 - [ ] T063 [P] [US6] Add multilingual OpenAPI documentation (English + French baseline) in src/Api/Swagger/Localization/
 - [ ] T064 [US6] Add localization tests (English + French) in tests/Api/Localization/

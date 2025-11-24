@@ -9,6 +9,9 @@ using Netemplate.Infrastructure.Persistence.Postgres;
 using Netemplate.Infrastructure.Persistence.Postgres.Outbox;
 using Netemplate.Infrastructure.Cache.Redis;
 using Netemplate.Infrastructure.Messaging.RabbitMq;
+using Netemplate.Api.Middleware.Localization;
+using Netemplate.Infrastructure.Messaging.RabbitMq.DeadLetter;
+using Netemplate.Infrastructure.Policies.Config;
 using Netemplate.Infrastructure.Auth.Jwt;
 using Netemplate.Api.Middleware;
 using Netemplate.Api.Logging;
@@ -27,6 +30,8 @@ using Microsoft.AspNetCore.HttpsPolicy;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+var isTesting = builder.Environment.IsEnvironment("Testing");
 
 // Configuration options
 builder.Services.Configure<SecurityPoliciesOptions>(builder.Configuration.GetSection(SecurityPoliciesOptions.SectionName));
@@ -66,17 +71,34 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 // Application Services
 builder.Services.AddScoped<Netemplate.Application.Services.IProductService, Netemplate.Application.Services.ProductService>();
 
-// Cache (resilient)
-var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
-builder.Services.AddSingleton<RedisCache>();
-builder.Services.AddSingleton<ICache>(sp => new ResilientCache(sp.GetRequiredService<RedisCache>()));
+// Resilience policies (centralized)
+builder.Services.AddResiliencePolicies(builder.Configuration);
 
-// Messaging (resilient)
+// Cache (resilient) - Skip external Redis in Testing environment
+var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+if (!isTesting)
+{
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        var config = sp.GetRequiredService<IConfiguration>();
+        var connString = config.GetConnectionString("Redis") ?? "localhost:6379";
+        return ConnectionMultiplexer.Connect(connString);
+    });
+    builder.Services.AddSingleton<RedisCache>();
+    builder.Services.AddSingleton<ICache>(sp => new ResilientCache(sp.GetRequiredService<RedisCache>(), sp.GetRequiredService<IResiliencePolicyRegistry>()));
+}
+
+// Messaging (resilient) - Skip external RabbitMQ in Testing environment
 var rabbitMqConnection = builder.Configuration.GetConnectionString("RabbitMQ") ?? "amqp://guest:guest@localhost:5672";
-builder.Services.AddSingleton<IConnectionFactory>(new ConnectionFactory { Uri = new Uri(rabbitMqConnection) });
-builder.Services.AddSingleton<RabbitMqMessageBus>();
-builder.Services.AddSingleton<IMessageBus>(sp => new ResilientMessageBus(sp.GetRequiredService<RabbitMqMessageBus>()));
+if (!isTesting)
+{
+    builder.Services.AddSingleton<IConnectionFactory>(new ConnectionFactory { Uri = new Uri(rabbitMqConnection) });
+    builder.Services.AddSingleton<RabbitMqMessageBus>();
+    builder.Services.AddSingleton<IMessageBus>(sp => new ResilientMessageBus(sp.GetRequiredService<RabbitMqMessageBus>(), sp.GetRequiredService<IResiliencePolicyRegistry>()));
+}
+
+// Dead-letter queue
+builder.Services.AddDeadLetterQueue(builder.Configuration);
 
 // Auth
 builder.Services.AddSingleton<IAuthService, JwtAuthService>();
@@ -179,16 +201,27 @@ builder.Services.AddSingleton<Netemplate.Application.Services.IFeatureFlagServic
 // Schema Registry
 builder.Services.AddSingleton<Netemplate.Application.Messaging.SchemaRegistry.IEventSchemaRegistry, Netemplate.Application.Messaging.SchemaRegistry.InMemoryEventSchemaRegistry>();
 
-// Outbox Dispatcher
-builder.Services.AddHostedService<OutboxDispatcher>();
+// Outbox Dispatcher - avoid starting background service in Testing
+if (!isTesting)
+{
+    builder.Services.AddHostedService<OutboxDispatcher>();
+}
 
 // Health checks
 builder.Services.AddSingleton<ApplicationReadinessCheck>();
-builder.Services.AddHealthChecks()
+var hcBuilder = builder.Services.AddHealthChecks()
     .AddCheck<ApplicationReadinessCheck>("app_readiness", tags: new[] { "readiness" })
-    .AddNpgSql(connectionString, name: "postgres", tags: new[] { "db", "readiness" })
-    .AddRedis(redisConnection, name: "redis", tags: new[] { "cache", "readiness" })
-    .AddRabbitMQ(rabbitMqConnection, name: "rabbitmq", tags: new[] { "messaging", "readiness" });
+    .AddNpgSql(connectionString, name: "postgres", tags: new[] { "db", "readiness" });
+
+if (!isTesting)
+{
+    hcBuilder
+        .AddRedis(redisConnection, name: "redis", tags: new[] { "cache", "readiness" })
+        .AddRabbitMQ(rabbitMqConnection, name: "rabbitmq", tags: new[] { "messaging", "readiness" });
+}
+
+// Localization for problem+json responses
+builder.Services.AddApiLocalization();
 
 // API
 builder.Services.AddControllers();
@@ -239,6 +272,9 @@ app.UseMiddleware<ValidationMiddleware>();
 // Security headers
 app.UseMiddleware<SecurityHeadersMiddleware>();
 
+// Localization (must come before exception handler to localize problem responses)
+app.UseLocalization();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -270,6 +306,9 @@ app.MapControllers();
 // Health endpoints
 app.MapHealthChecks("/health/live", HealthCheckConfiguration.CreateLivenessOptions()).AllowAnonymous();
 app.MapHealthChecks("/health/ready", HealthCheckConfiguration.CreateReadinessOptions()).AllowAnonymous();
+
+// Initialize dead-letter queue infrastructure
+await app.Services.InitializeDeadLetterQueueAsync();
 
 // Mark application as ready
 var readinessCheck = app.Services.GetRequiredService<ApplicationReadinessCheck>();

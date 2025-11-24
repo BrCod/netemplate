@@ -1,39 +1,32 @@
 using Netemplate.Application.Interfaces;
-using Polly;
-using Polly.Retry;
-using Polly.CircuitBreaker;
-using Polly.Timeout;
+using Netemplate.Infrastructure.Policies.Config;
 
 namespace Netemplate.Infrastructure.Messaging.RabbitMq;
 
 public sealed class ResilientMessageBus : IMessageBus
 {
     private readonly IMessageBus _inner;
-    private readonly AsyncRetryPolicy _retry;
-    private readonly AsyncCircuitBreakerPolicy _circuitBreaker;
-    private readonly AsyncTimeoutPolicy _timeout;
+    private readonly MessagingPolicies _policies;
 
-    public ResilientMessageBus(IMessageBus inner)
+    public ResilientMessageBus(IMessageBus inner, IResiliencePolicyRegistry registry)
     {
         _inner = inner;
-        _retry = Policy.Handle<Exception>()
-            .WaitAndRetryAsync(3, attempt => TimeSpan.FromMilliseconds(300 * attempt));
-        _circuitBreaker = Policy.Handle<Exception>()
-            .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
-        _timeout = Policy.TimeoutAsync(TimeSpan.FromSeconds(10));
+        _policies = registry.Messaging;
     }
 
     public async Task PublishAsync<T>(string topic, T message, CancellationToken ct = default)
     {
-        await _retry.ExecuteAsync(async () =>
-            await _circuitBreaker.ExecuteAsync(async () =>
-                await _timeout.ExecuteAsync(async _ => await _inner.PublishAsync(topic, message, ct), ct)));
+        await _policies.Retry.ExecuteAsync(async () =>
+            await _policies.CircuitBreaker.ExecuteAsync(async () =>
+                await _policies.Bulkhead.ExecuteAsync(async () =>
+                    await _policies.Timeout.ExecuteAsync(async _ => await _inner.PublishAsync(topic, message, ct), ct))));
     }
 
     public async Task SubscribeAsync(string topic, Func<byte[], CancellationToken, Task> handler, CancellationToken ct = default)
     {
         // Subscription setup is less frequent; still protect with circuit breaker.
-        await _circuitBreaker.ExecuteAsync(async () =>
-            await _inner.SubscribeAsync(topic, handler, ct));
+        await _policies.CircuitBreaker.ExecuteAsync(async () =>
+            await _policies.Bulkhead.ExecuteAsync(async () =>
+                await _inner.SubscribeAsync(topic, handler, ct)));
     }
 }
